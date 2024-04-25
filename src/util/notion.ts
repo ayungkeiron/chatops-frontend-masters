@@ -12,7 +12,8 @@ export async function notionApi(endpoint: string, body: {}) {
 
 	if (!res || !res.ok) {
 		console.error(res);
-	}
+	} 
+	//pqra probar
 
 	const data = await res?.json();
 
