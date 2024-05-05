@@ -2,6 +2,8 @@ import type { HandlerEvent } from '@netlify/functions';
 
 import { createHmac } from 'crypto';
 
+
+//manejo de los endpoiints de slack
 export function slackApi(
 	endpoint: SlackApiEndpoint,
 	body: SlackApiRequestBody,
@@ -15,6 +17,8 @@ export function slackApi(
 		body: JSON.stringify(body),
 	}).then((res) => res.json());
 }
+
+
 
 export function verifySlackRequest(request: HandlerEvent) {
 	const secret = process.env.SLACK_SIGNING_SECRET!;
