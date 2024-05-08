@@ -1,7 +1,9 @@
-import type { Handler } from '@netlify/functions';
+import type { Handler, HandlerEvent } from '@netlify/functions';
 
 import { parse } from 'querystring';
-import { blocks, modal, slackApi, verifySlackRequest } from './util/slack';
+import { blocks, modal, slackApi, verifySlackRequest, exchangeAuthCodeForToken } from './util/slack';
+
+
 
 async function handleSlashCommand(payload: SlackSlashCommandPayload) {
 	switch (payload.command) {
@@ -62,7 +64,9 @@ async function handleInteractivity(payload: SlackModalPayload) {
 	const callback_id = payload.callback_id ?? payload.view.callback_id;
 
 	switch (callback_id) {
+
 		case 'foodfight-modal':
+			
 			const data = payload.view.state.values;
 			const fields = {
 				opinion: data.opinion_block.opinion.value,
@@ -70,11 +74,13 @@ async function handleInteractivity(payload: SlackModalPayload) {
 				submitter: payload.user.name,
 			};
  
-
+			console.log("entrando al modal")
 			await slackApi('chat.postMessage', {
-				channel: 'C0438E823SP',
+				channel: 'C070BKZGL2J',
 				text: `Oh dang, y’all! :eyes: <@${payload.user.id}> just started a food fight with a ${fields.spiceLevel} take:\n\n*${fields.opinion}*\n\n...discuss.`,
 			});
+			console.log("saliendo de post")
+
 			break;
 
 		case 'start-food-fight-nudge':
@@ -104,8 +110,81 @@ async function handleInteractivity(payload: SlackModalPayload) {
 	};
 }
 
+// Implementa una función dedicada al endpoint de OAuth
+async function handleOauthCallback(event: HandlerEvent) {
+    const queryStringParameters = event.queryStringParameters;
+    const code = queryStringParameters?.code;
+
+    if (!code) {
+        return {
+            statusCode: 400,
+            body: 'Código de autorización no proporcionado.'
+        };
+    }
+
+    try {
+        const accessToken = await exchangeAuthCodeForToken(code);
+        console.log(`Token de acceso obtenido: ${accessToken}`);
+		console.log('Info del user',queryStringParameters)
+
+        // Aquí puedes guardar el token en tu base de datos o continuar con otra lógica
+		const redirectUrl = 'https://llaimaespacio.slack.com/app_redirect?app=A070KENRX7Y';
+
+		return {
+			statusCode: 302,
+			headers: {
+				Location: redirectUrl,
+				'Content-Type': 'text/plain' // O 'text/html'
+			},
+			body: `Redirecting to ${redirectUrl}`
+		}
+
+    } catch (error) {
+        console.error(error);
+        return {
+            statusCode: 500,
+            body: 'Error durante el proceso de autorización.'
+        };
+    }
+}
+
+
+// Handler para mensajes directos
+async function handleMessage(event: any) {
+    // Verifica si el mensaje fue enviado por un bot (tanto por subtype como por bot_id)
+    if ((event.subtype && event.subtype === 'bot_message') || event.bot_id) {
+        console.log("Mensaje ignorado porque fue enviado por un bot");
+        return {
+            statusCode: 200,
+            body: ''
+        };
+    }
+
+    if (event.type === 'message' && event.channel_type === 'im') {
+        await slackApi('chat.postMessage', {
+            channel: event.channel,
+            text: `Escribiendo: ${event.text}, no llegarás a ningún lado, la única forma de conseguirlo es trabajando.`
+        });
+    }
+
+    return {
+        statusCode: 200,
+        body: ''
+    };
+}
+
+
+
 export const handler: Handler = async (event) => {
-	const valid = verifySlackRequest(event);
+
+	console.log("evento:", event?.body)
+
+	// Redireccionamiento para el flujo de OAuth de SLACK
+	if (event.path.includes('/api/slack/oauth/callback')) {
+		return handleOauthCallback(event);
+	}
+	else{
+		const valid = verifySlackRequest(event);
 
 	if (!valid) {
 		console.error('invalid request');
@@ -115,21 +194,47 @@ export const handler: Handler = async (event) => {
 			body: 'invalid request',
 		};
 	}
+	const contentType = event.headers['content-type'] || '';
+    let body:any;
 
-	const body = parse(event.body ?? '') as SlackPayload;
 
-	if (body.command) {
-		return handleSlashCommand(body as SlackSlashCommandPayload);
+
+    if (contentType.includes('application/x-www-form-urlencoded')) {
+        // Manejo del caso donde event.body podría ser null
+        body = parse(event.body || '');  // Usar el operador OR para asegurar un string
+    } else {
+        // Asegúrate de que event.body sea un string antes de parsearlo como JSON
+        body = event.body ? JSON.parse(event.body) : {};
+    }
+
+	  // Manejar la verificación del URL durante la configuración de eventos
+	  if (body.type === 'url_verification') {
+        return {
+            statusCode: 200,
+            body: body.challenge
+        };
+    }
+
+		// Distribuir el manejo basado en el tipo de solicitud
+		else if (body.command) {
+			// Manejar comandos slash
+			return handleSlashCommand(body);
+		} else if (body.payload) {
+			// Manejar interactividad
+			const payload = JSON.parse(body.payload);
+			return handleInteractivity(payload);
+		} else if (body.event) {
+			// Manejar eventos, como mensajes directos
+			return handleMessage(body.event);
+		}
+
+
 	}
+	
 
-	// TODO handle interactivity (e.g. context commands, modals)
-	if (body.payload) {
-		const payload = JSON.parse(body.payload);
-		return handleInteractivity(payload);
-	}
-
-	return {
-		statusCode: 200,
-		body: 'TODO: handle Slack commands and interactivity',
-	};
+		// Si ninguna condición coincide
+		return {
+			statusCode: 400,
+			body: 'No recognized request type'
+		};
 };

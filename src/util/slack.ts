@@ -18,8 +18,6 @@ export function slackApi(
 	}).then((res) => res.json());
 }
 
-
-
 export function verifySlackRequest(request: HandlerEvent) {
 	const secret = process.env.SLACK_SIGNING_SECRET!;
 	const signature = request.headers['x-slack-signature'];
@@ -139,4 +137,24 @@ export function modal({
 			blocks,
 		},
 	};
+}
+
+// Función para intercambiar el código de autorización por un token
+export async function exchangeAuthCodeForToken(code: string): Promise<string> {
+    const client_id = process.env.SLACK_CLIENT_ID;
+    const client_secret = process.env.SLACK_CLIENT_SECRET;
+    const params = new URLSearchParams({
+        client_id: client_id || '',
+        client_secret: client_secret || '',
+        code
+    });
+
+    const response = await fetch(`https://slack.com/api/oauth.v2.access?${params}`);
+    const data = await response.json();
+
+    if (!data.ok) {
+        throw new Error(`Error al obtener el token: ${data.error}`);
+    }
+
+    return data.access_token;
 }
