@@ -17,3 +17,8 @@ export async function llaimaApi(endpoint: string, body: {}) {
 	return data;
 }
 
+export async function validateLlaimaUser(request:SlackEvent) {
+	const response=await llaimaApi('/integration/slack/validate-user',request)
+	return response.data
+}
+
