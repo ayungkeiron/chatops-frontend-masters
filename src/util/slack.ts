@@ -4,18 +4,23 @@ import { createHmac } from 'crypto';
 
 
 //manejo de los endpoiints de slack
-export function slackApi(
-	endpoint: SlackApiEndpoint,
-	body: SlackApiRequestBody,
+// Función para hacer llamadas a la API de Slack
+export async function slackApi(
+    endpoint: SlackApiEndpoint,
+    body: SlackApiRequestBody,
+    accessToken?: string, // Parámetro opcional para token personalizado
 ) {
-	return fetch(`https://slack.com/api/${endpoint}`, {
-		method: 'POST',
-		headers: {
-			Authorization: `Bearer ${process.env.SLACK_BOT_OAUTH_TOKEN}`,
-			'Content-Type': 'application/json; charset=utf-8',
-		},
-		body: JSON.stringify(body),
-	}).then((res) => res.json());
+    // Usa el token personalizado si está presente, de lo contrario usa el token predeterminado
+    const token = accessToken || process.env.SLACK_BOT_OAUTH_TOKEN;
+
+    return fetch(`https://slack.com/api/${endpoint}`, {
+        method: 'POST',
+        headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json; charset=utf-8'
+        },
+        body: JSON.stringify(body)
+    }).then((res) => res.json());
 }
 
 export function verifySlackRequest(request: HandlerEvent) {
@@ -140,7 +145,7 @@ export function modal({
 }
 
 // Función para intercambiar el código de autorización por un token
-export async function exchangeAuthCodeForToken(code: string): Promise<string> {
+export async function exchangeAuthCodeForToken(code: string): Promise<SlackOAuthAccessResponse> {
     const client_id = process.env.SLACK_CLIENT_ID;
     const client_secret = process.env.SLACK_CLIENT_SECRET;
     const params = new URLSearchParams({
@@ -156,5 +161,50 @@ export async function exchangeAuthCodeForToken(code: string): Promise<string> {
         throw new Error(`Error al obtener el token: ${data.error}`);
     }
 
-    return data.access_token;
+    return data;
+}
+
+// Llamada a la API auth.test para obtener información sobre el workspace y usuario
+export async function getSlackAuthInfo(accessToken: string) {
+    const response = await slackApi('auth.test', {}, accessToken);
+
+    if (!response.ok) {
+        throw new Error(`Error al obtener la información del equipo/usuario: ${response.error}`);
+    }
+
+    return response;
+}
+
+// Función para obtener el correo electrónico del usuario
+export async function getUserEmail(accessToken: string, userId: string) {
+
+	    // Construimos los datos del cuerpo en formato `application/x-www-form-urlencoded`
+		const body = new URLSearchParams();
+		body.append('user', userId);
+	
+		// Hacemos la llamada al endpoint `users.info`
+		const response = await fetch('https://slack.com/api/users.info', {
+			method: 'POST',
+			headers: {
+				'Authorization': `Bearer ${accessToken}`,
+				'Content-Type': 'application/x-www-form-urlencoded',
+			},
+			body: body.toString(),
+		});
+	
+		const data = await response.json();
+	
+		// Verificamos si la respuesta es correcta
+		if (!data.ok) {
+			throw new Error(`Error al obtener la información del usuario: ${data.error}`);
+		}
+	
+		// Extraemos el correo electrónico del perfil del usuario
+		const email = data.user?.profile?.email;
+	
+		if (!email) {
+			throw new Error('No se encontró la dirección de correo electrónico para este usuario.');
+		}
+	
+		return email;
 }

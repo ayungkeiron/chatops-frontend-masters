@@ -20,6 +20,20 @@ type SlackInteractivityPayload = {
 	command: never;
 };
 
+// Define el tipo SlackOAuthAccessResponse sin un espacio de nombres
+type SlackOAuthAccessResponse = {
+    ok: boolean;
+    app_id: string;
+    authed_user: { id: string };
+    scope: string;
+    token_type: string;
+    access_token: string;
+    bot_user_id: string;
+    team: { id: string; name: string };
+    enterprise: null | string;
+    is_enterprise_install: boolean;
+};
+
 type SlackPayload = SlackSlashCommandPayload | SlackInteractivityPayload;
 
 type SlackBlockSection = {
@@ -30,6 +44,27 @@ type SlackBlockSection = {
 		verbatim?: boolean;
 	};
 };
+
+// Define el tipo SlackEvent para mensajes directos
+type SlackEvent = {
+    user: string; // ID del usuario que envió el mensaje
+    type: 'message'; // Tipo de evento, en este caso 'message'
+    ts: string; // Timestamp del mensaje
+    client_msg_id?: string; // ID único del mensaje del cliente
+    text: string; // Contenido del mensaje enviado
+    team: string; // ID del equipo
+    blocks?: Array<{
+        type: string; // Tipo de bloque, como 'rich_text'
+        block_id: string;
+        elements: Array<any>; // Elementos en el bloque, podrían requerir un tipo más detallado
+    }>;
+    channel: string; // ID del canal al que fue enviado el mensaje
+    event_ts: string; // Timestamp del evento en la API de Slack
+    channel_type: 'im' | 'channel' | 'group'; // Tipo de canal, generalmente 'im' para mensajes directos
+    bot_id?: string; // Presente si el mensaje fue enviado por un bot
+    subtype?: string; // Presente para subtipos específicos de mensajes
+};
+
 
 type SlackBlockInput = {
 	type: 'input';
@@ -156,7 +191,10 @@ type SlackModalPayload = {
 	};
 };
 
-type SlackApiEndpoint = 'chat.postMessage' | 'views.open';
+type SlackApiEndpoint =  | "auth.test"
+| "chat.postMessage"
+| "users.info"
+| "conversations.list"
 
 type SlackApiRequestBody = {};
 
@@ -210,3 +248,6 @@ type NewItem = {
 	status?: string;
 	submitter?: string;
 };
+
+
+

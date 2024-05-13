@@ -1,8 +1,6 @@
 import type { Handler, HandlerEvent } from '@netlify/functions';
-
 import { parse } from 'querystring';
-import { blocks, modal, slackApi, verifySlackRequest, exchangeAuthCodeForToken } from './util/slack';
-
+import { blocks, modal, slackApi, verifySlackRequest, exchangeAuthCodeForToken, getUserEmail } from './util/slack';
 
 
 async function handleSlashCommand(payload: SlackSlashCommandPayload) {
@@ -123,9 +121,14 @@ async function handleOauthCallback(event: HandlerEvent) {
     }
 
     try {
-        const accessToken = await exchangeAuthCodeForToken(code);
-        console.log(`Token de acceso obtenido: ${accessToken}`);
-		console.log('Info del user',queryStringParameters)
+
+		const response=await exchangeAuthCodeForToken(code)
+        const accessToken = response.access_token;
+		// Obtén el correo electrónico del usuario usando `users.info`
+		const userEmail = await getUserEmail(accessToken, response.authed_user.id);
+		console.log(`Correo electrónico del usuario: ${userEmail}`, response);
+		//Aquí hay que guardar el @algo, ty el response completo para validarlo con Henry.
+		//APIHENRY(usermail, payload, slack)
 
         // Aquí puedes guardar el token en tu base de datos o continuar con otra lógica
 		const redirectUrl = 'https://llaimaespacio.slack.com/app_redirect?app=A070KENRX7Y';
@@ -148,10 +151,17 @@ async function handleOauthCallback(event: HandlerEvent) {
     }
 }
 
+async function SlackValidClient(user:string) {
+    //Aqui vemos si existe el cliente, y retorno si true y su token, de lo contrario registro la empresa y retorno false mas su token.
+	return {token:"cwcw", payment:true}
+}
+
 
 // Handler para mensajes directos
-async function handleMessage(event: any) {
-    // Verifica si el mensaje fue enviado por un bot (tanto por subtype como por bot_id)
+async function handleSlackMessage(event:SlackEvent) {
+    console.log("SlackEvent:", event);
+	
+    // Verifica si el mensaje fue enviado por un bot
     if ((event.subtype && event.subtype === 'bot_message') || event.bot_id) {
         console.log("Mensaje ignorado porque fue enviado por un bot");
         return {
@@ -159,17 +169,41 @@ async function handleMessage(event: any) {
             body: ''
         };
     }
-
+    // Procesa solo los mensajes directos
     if (event.type === 'message' && event.channel_type === 'im') {
-        await slackApi('chat.postMessage', {
-            channel: event.channel,
-            text: `Escribiendo: ${event.text}, no llegarás a ningún lado, la única forma de conseguirlo es trabajando.`
-        });
+        
+		const infoutil=[{"channel":event.channel},{"text":event.text},{"user":event.user}, {"team_id":event.team}]
+		console.log(infoutil);
+
+
+		let message=""
+		const response=await SlackValidClient(event.user);
+		// Validar el cliente
+		if(response?.payment){
+			message=`Escribiendo: ${event.text}, no llegarás a ningún lado, la única forma de conseguirlo es trabajando.`
+		}else{
+			message="Tu empresa no tiene una cuenta creada para poder contestar tus solicitudes sobre tu documentación. Puedes visitar htttp://llaima.tech para poder contratar, subir e integrar tu documentación."
+		}
+
+        try {
+            // Intenta enviar el mensaje utilizando la API de Slack
+            await slackApi('chat.postMessage', {
+                channel: event.channel,
+                text: message
+            },response?.token);
+
+            // Muestra la respuesta completa en la consola
+            console.log("Respuesta de la API:", response);
+
+        } catch (error) {
+            // Captura el error y lo muestra en la consola
+            console.error("Error en la llamada a la API:", error);
+        }
     }
 
     return {
         statusCode: 200,
-        body: ''
+        body: 'No se hizo nada con este evento'
     };
 }
 
@@ -177,27 +211,31 @@ async function handleMessage(event: any) {
 
 export const handler: Handler = async (event) => {
 
-	console.log("evento:", event?.body)
+
+	//CASO PARA LAS PETICIONES QUE VIENE DE SLACK
+	console.log("request Handler", event.httpMethod, event.path)
 
 	// Redireccionamiento para el flujo de OAuth de SLACK
 	if (event.path.includes('/api/slack/oauth/callback')) {
+		console.log("AuthSkack")
 		return handleOauthCallback(event);
 	}
 	else{
 		const valid = verifySlackRequest(event);
+	
 
 	if (!valid) {
 		console.error('invalid request');
 
 		return {
-			statusCode: 400,
+			statusCode: 400, 
 			body: 'invalid request',
 		};
 	}
 	const contentType = event.headers['content-type'] || '';
     let body:any;
 
-
+	
 
     if (contentType.includes('application/x-www-form-urlencoded')) {
         // Manejo del caso donde event.body podría ser null
@@ -208,14 +246,12 @@ export const handler: Handler = async (event) => {
     }
 
 	  // Manejar la verificación del URL durante la configuración de eventos
-	  if (body.type === 'url_verification') {
-        return {
-            statusCode: 200,
-            body: body.challenge
-        };
-    }
-
-		// Distribuir el manejo basado en el tipo de solicitud
+	 	if (body.type === 'url_verification') {
+        	return {
+            	statusCode: 200,
+            	body: body.challenge
+        	};
+    }// Distribuir el manejo basado en el tipo de solicitud
 		else if (body.command) {
 			// Manejar comandos slash
 			return handleSlashCommand(body);
@@ -224,14 +260,12 @@ export const handler: Handler = async (event) => {
 			const payload = JSON.parse(body.payload);
 			return handleInteractivity(payload);
 		} else if (body.event) {
+			
 			// Manejar eventos, como mensajes directos
-			return handleMessage(body.event);
+			return handleSlackMessage(body.event);
 		}
 
-
 	}
-	
-
 		// Si ninguna condición coincide
 		return {
 			statusCode: 400,
