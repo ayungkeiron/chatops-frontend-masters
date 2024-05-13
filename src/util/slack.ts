@@ -176,7 +176,7 @@ export async function getSlackAuthInfo(accessToken: string) {
 }
 
 // Función para obtener el correo electrónico del usuario
-export async function getUserEmail(accessToken: string, userId: string) {
+export async function getUser(accessToken: string, userId: string) {
 
 	    // Construimos los datos del cuerpo en formato `application/x-www-form-urlencoded`
 		const body = new URLSearchParams();
@@ -199,12 +199,5 @@ export async function getUserEmail(accessToken: string, userId: string) {
 			throw new Error(`Error al obtener la información del usuario: ${data.error}`);
 		}
 	
-		// Extraemos el correo electrónico del perfil del usuario
-		const email = data.user?.profile?.email;
-	
-		if (!email) {
-			throw new Error('No se encontró la dirección de correo electrónico para este usuario.');
-		}
-	
-		return email;
+		return data.user;
 }

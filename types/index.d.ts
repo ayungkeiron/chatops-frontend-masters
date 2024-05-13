@@ -249,5 +249,154 @@ type NewItem = {
 	submitter?: string;
 };
 
+///Laima
 
+type StatusEmojiInfo = {
+    emoji_name: string;
+    display_url: string;
+    unicode: string;
+};
 
+// Define the structure for Slack profile information within the user integration data
+type SlackProfile = {
+	team: string;
+	email: string;
+	phone: string;
+	skype: string;
+	title: string;
+	fields: null;
+	image_24: string;
+	image_32: string;
+	image_48: string;
+	image_72: string;
+	image_192: string;
+	image_512: string;
+	last_name: string;
+	real_name: string;
+	first_name: string;
+	image_1024: string;
+	avatar_hash: string;
+	status_text: string;
+	display_name: string;
+	huddle_state: string;
+	status_emoji: string;
+	image_original: string;
+	is_custom_image: boolean;
+	status_expiration: number;
+	real_name_normalized: string;
+	status_text_canonical: string;
+	display_name_normalized: string;
+	status_emoji_display_info: StatusEmojiInfo[];
+	huddle_state_expiration_ts: number;
+  };
+  
+  // Define the structure for user integration data within the user data
+  type UserIntegration = {
+	id: string;
+	createdAt: string;
+	updatedAt: string;
+	deletedAt: null | string;
+	payload: {
+	  id: string;
+	  tz: string;
+	  name: string;
+	  color: string;
+	  is_bot: boolean;
+	  deleted: boolean;
+	  profile: SlackProfile;
+	  team_id: string;
+	  updated: number;
+	  is_admin: boolean;
+	  is_owner: boolean;
+	  tz_label: string;
+	  real_name: string;
+	  tz_offset: number;
+	  is_app_user: boolean;
+	  is_restricted: boolean;
+	  is_primary_owner: boolean;
+	  is_email_confirmed: boolean;
+	  is_ultra_restricted: boolean;
+	  who_can_share_contact_card: string;
+	};
+	channel: string;
+	user: string;
+  };
+  
+  // Define the structure for the main user data
+  type UserData = {
+	id: string;
+	createdAt: string;
+	updatedAt: string;
+	deletedAt: null | string;
+	name: string;
+	email: string;
+	image: string;
+	isInitialUser: boolean;
+	company: string;
+	integrations: UserIntegration[];
+  };
+  
+  // Define the structure for company data within the payload
+  type CompanyData = {
+	id: string;
+	createdAt: string;
+	updatedAt: string;
+	deletedAt: null | string;
+	name: string;
+	description: string;
+	domains: string[];
+	isActive: boolean;
+	integrations: UserIntegration[];
+  };
+  
+  // Define the structure for the OAuth payload response
+  type LlaimaOAuthPayload = {
+	data: {
+	  company: CompanyData;
+	  user: UserData;
+	};
+	success: boolean;
+  };
+  
+  
+  type SlackUser = {
+	id: string;
+	team_id: string;
+	name: string;
+	deleted: boolean;
+	color: string;
+	real_name: string;
+	tz: string;
+	tz_label: string;
+	tz_offset: number;
+	profile: SlackProfile;
+	is_admin: boolean;
+	is_owner: boolean;
+	is_primary_owner: boolean;
+	is_restricted: boolean;
+	is_ultra_restricted: boolean;
+	is_bot: boolean;
+	is_app_user: boolean;
+	updated: number;
+	is_email_confirmed: boolean;
+	who_can_share_contact_card: string;
+  };
+  
+  type SlackTeam = {
+	id: string;
+	name: string;
+  };
+  
+  type SlackIntegrationPayload = {
+	ok: boolean;
+	app_id: string;
+	user: SlackUser;
+	scope: string;
+	token_type: string;
+	access_token: string;
+	bot_user_id: string;
+	team: SlackTeam;
+	enterprise:string | null;  
+	is_enterprise_install: boolean;
+  };
+  
