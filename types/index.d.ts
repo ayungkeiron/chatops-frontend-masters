@@ -48,7 +48,7 @@ type SlackBlockSection = {
 // Define el tipo SlackEvent para mensajes directos
 type SlackEvent = {
     user: string; // ID del usuario que envió el mensaje
-    type: 'message'; // Tipo de evento, en este caso 'message'
+    type: 'message'| 'app_home_opened'; // Tipo de evento, en este caso 'message'
     ts: string; // Timestamp del mensaje
     client_msg_id?: string; // ID único del mensaje del cliente
     text: string; // Contenido del mensaje enviado
@@ -195,7 +195,7 @@ type SlackApiEndpoint =  | "auth.test"
 | "chat.postMessage"
 | "users.info"
 | "conversations.list"
-
+| "views.publish"
 type SlackApiRequestBody = {};
 
 type BlockArgs = {

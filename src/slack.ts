@@ -176,6 +176,59 @@ async function handleSlackOauthCallback(event: HandlerEvent) {
     }
 }
 
+async function handleAppHomeOpened(event: SlackEvent) {
+    // Comprobar que el evento es de tipo 'app_home_opened'
+    if (event.type == 'app_home_opened') {
+        const user_id = event.user;
+        // Aquí puedes definir el contenido del Home tab usando bloques
+        const homeView = {
+            "type": "home",
+            "blocks": [
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": "¡Bienvenido a LlaimaBOT!"
+                    }
+                },
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": "Selecciona una opción de abajo para comenzar."
+                    }
+                },
+                // Añade más bloques según necesites
+            ]
+        };
+
+        try {
+            // Usa la API de Slack para enviar la vista al Home tab
+            const response = await slackApi('views.publish', {
+                user_id: user_id,
+                view: homeView
+            });
+
+            console.log('Home tab updated:', response);
+            return {
+                statusCode: 200,
+                body: 'Home tab updated successfully'
+            };
+        } catch (error) {
+            console.error('Error updating Home tab:', error);
+            return {
+                statusCode: 500,
+                body: 'Failed to update Home tab'
+            };
+        }
+    }
+    return {
+        statusCode: 200,
+        body: 'Event not app_home_opened'
+    };
+}
+
+
 async function SlackValidClient(event:SlackEvent) {
     //Aqui vemos si existe el cliente, y retorno si true y su token, de lo contrario registro la empresa y retorno false mas su token.
 	const response=await validateLlaimaUser(event);
@@ -198,16 +251,16 @@ async function handleSlackMessage(event:SlackEvent) {
 		
 		const mensajesBot = [
 			{
-				texto: "¡Hola, Juan! Claro, estaré encantado de ayudarte pero necesito más información para poder asistirte. ¿Podrías darme algunos detalles como la fecha de inicio, el tipo de contrato, y si fue con un comprador o un vendedor?"
+				texto: "¡Hola, Domingo! Claro, estaré encantado de ayudarte pero necesito más información para poder asistirte. ¿Podrías darme algunos detalles como la fecha de inicio, el tipo de contrato, y si fue con un comprador o un vendedor?"
 			},
 			{
-				texto: "He encontrado dos contratos. Uno de fecha 14 de marzo y otro de fecha 27 de marzo. ¿Qué necesitas saber específicamente?"
+				texto: "He encontrado dos contratos. Uno de fecha *14 de marzo* y otro de *fecha 27 de marzo*. ¿Qué necesitas saber específicamente?"
 			},
 			{
-				texto: "Aquí tienes los detalles de los contratos:\n* *Nombre del Contrato*: Contrato de Compraventa SolarTech 14-03-2024.pdf\n  * *Fecha de Fin del Contrato*: 14-03-2025\n  * *Monto Total del Contrato*: $100,000\n* *Nombre del Contrato*: Contrato de Compraventa SolarTech 27-03-2024.pdf\n  * *Fecha de Fin del Contrato*: 27-03-2025\n  * *Monto Total del Contrato*: $150,000\n¿Hay algo más en lo que pueda asistirte?"
+				texto: "Aquí tienes los detalles de los contratos:\n*Nombre del Contrato*: Contrato de Compraventa SolarTech 14-03-2024.pdf\n  * *Fecha de Fin del Contrato*: 14-03-2025\n  * *Monto Total del Contrato*: $100,000\n*Nombre del Contrato*: Contrato de Compraventa SolarTech 27-03-2024.pdf\n  * *Fecha de Fin del Contrato*: 27-03-2025\n  * *Monto Total del Contrato*: $150,000\n¿Hay algo más en lo que pueda asistirte?"
 			},
 			{
-				texto: "De nada, Juan. Recuerda que estoy aquí para ayudarte con cualquier otra cosa que necesites. ¡Que tengas un buen día!"
+				texto: "De nada, Domingo. Recuerda que estoy aquí para ayudarte con cualquier otra cosa que necesites. ¡Que tengas un buen día!"
 			}
 		];
 		let message="usuario logueado y de pago!!:D"
@@ -217,7 +270,6 @@ async function handleSlackMessage(event:SlackEvent) {
 		console.log("respuesta:",response)
 				//Aqui debemos validar 
 		try{
-
 			if(response.payment){
 				//mensaje para los logueados
 				const res=	await slackApi('chat.postMessage', {
@@ -227,18 +279,19 @@ async function handleSlackMessage(event:SlackEvent) {
 				console.log(res)	
 				
 			}else{
+				//mensajesBot[fakemessage].texto
 				//mensaje para los no logueados.
+				//'.\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n.'
 				const res=	await slackApi('chat.postMessage', {
 					channel: event.channel,
-					text: mensajesBot[fakemessage].texto
+					text:mensajesBot[fakemessage].texto //esto es lo que se manda y hay que reemplazar
 				},response?.token);
 				fakemessage=fakemessage+1;
-				if(fakemessage==3){
+				if(fakemessage==4){
 					fakemessage=0
 				}
 				console.log(res)	
 			}
-
 			return {
 				statusCode: 200,
 				body: 'Mensaje enviado'
@@ -315,8 +368,19 @@ export const handler: Handler = async (event) => {
 			return handleInteractivity(payload);
 		} else if (body.event) {
 			
-			// Manejar eventos, como mensajes directos
-			return handleSlackMessage(body.event);
+			switch (body.event.type) {
+				case 'app_home_opened':
+					return handleAppHomeOpened(body.event);
+				case 'message':
+					return handleSlackMessage(body.event);
+				default:
+					console.log(`Unhandled event type: ${body.event.type}`);
+					return {
+						statusCode: 200,
+						body: 'Event type not handled'
+					};
+			}
+
 		}
 
 	}
