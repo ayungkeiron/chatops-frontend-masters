@@ -195,7 +195,7 @@ type SlackApiEndpoint =  | "auth.test"
 | "chat.postMessage"
 | "users.info"
 | "conversations.list"
-| "views.publish"
+| "views.publish" | "views.open"
 type SlackApiRequestBody = {};
 
 type BlockArgs = {
