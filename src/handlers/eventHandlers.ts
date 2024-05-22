@@ -113,17 +113,35 @@ export async function handleSlackMessage(event: SlackEvent) {
                     }
                 } 
                 //COMPORTAMIENTO PARA LOS NO LOGUEADOS
+                //mensajesBot[fakemessage].texto
                 else {
+
+                    console.log("res a no logueado:", response.user)
+
+                    const name= response.user.name;
+                    const compania= response.company.name
+                    const mensajeNoCliente = `Hola *${name}*, 
+                    \n¡Nos encanta que te hayas puesto en contacto con nosotros! Hemos notado que tu empresa, *${compania}*, aún no es parte de la familia Llaima, pero te tenemos excelentes noticias: unirte es rápido, sencillo y puede transformar la forma en que manejas el conocimiento en tu organización.
+                    \nImagina tener un *asistente virtual que conecta a tus colaboradores con toda la información que necesitan*, justo cuando la necesitan. Nuestra plataforma innovadora permite *subir documentos y conectarse a herramientas* como Drive, Notion o Confluence, integrándose perfectamente en tu chat corporativo en Slack o Teams.
+                    \nDescubre más sobre cómo Llaima puede optimizar la productividad y eficiencia de tu equipo visitando http://llaima.ai o contáctanos directamente en alejandro@llaima.ai. Estamos aquí para resolver cualquier duda que tengas y mostrarte cómo Llaima puede hacer una diferencia real en tu empresa.
+                    \n\n*PUEDES PREGUNTAR EN ESTE CHAT* lo que quieras, para que veas la diferencia entre Llaima y un asistente virtual normal.
+                    
+                    \n\n¡Esperamos saber más de ti pronto!
+                    \nSaludos,
+                    \nMeni, Alejandro y Henry!`;
+
     
                     const res = await slackApi('chat.postMessage', {
                         channel: event.channel,
-                        text: mensajesBot[fakemessage].texto
+                        text: mensajeNoCliente
                     }, response?.token);
+
+                    //para chat de marketing
                     fakemessage = fakemessage + 1;
                     if (fakemessage == 4) {
                         fakemessage = 0;
                     }
-                    console.log(res);
+                    console.log('res a no logueado:',res);
                 }
     
                 return {
