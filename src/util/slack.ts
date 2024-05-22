@@ -1,5 +1,5 @@
 import type { HandlerEvent } from '@netlify/functions';
-
+import axios from 'axios';
 import { createHmac } from 'crypto';
 
 
@@ -13,17 +13,30 @@ export async function slackApi(
     // Usa el token personalizado si está presente, de lo contrario usa el token predeterminado
     const token = accessToken || process.env.SLACK_BOT_OAUTH_TOKEN;
 
-    return fetch(`https://slack.com/api/${endpoint}`, {
-        method: 'POST',
-        headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json; charset=utf-8'
-        },
-        body: JSON.stringify(body)
-    }).then((res) => res.json());
+//	console.log("token env:", process.env.SLACK_BOT_OAUTH_TOKEN)
+//	console.log("accessToken:", accessToken)
+//	console.log("token a meter a la API:", token)
+
+	try {
+        const response = await axios.post(`https://slack.com/api/${endpoint}`, body, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json; charset=utf-8'
+            }
+        });
+
+	//	console.log('Respuesta de la API de Slack:', response)
+
+        return response.data;
+    } catch (error) {
+        // Manejo de errores
+        console.error('Error al hacer la llamada a la API de Slack:', error);
+        throw error; // Opcional: puedes lanzar el error para manejarlo en un nivel superior
+    }
 }
 
 export function verifySlackRequest(request: HandlerEvent) {
+
 	const secret = process.env.SLACK_SIGNING_SECRET!;
 	const signature = request.headers['x-slack-signature'];
 	const timestamp = Number(request.headers['x-slack-request-timestamp']);

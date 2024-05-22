@@ -1,7 +1,8 @@
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { parse } from 'querystring';
 import { blocks, modal, slackApi, verifySlackRequest, exchangeAuthCodeForToken, getUser } from './util/slack';
-import { llaimaApi, validateLlaimaUser } from './util/llaima';
+import { llaimaApi, validateLlaimaUser, getSendMessage } from './util/llaima';
+import { get } from 'http';
 
 let fakemessage=0;
 
@@ -231,12 +232,19 @@ async function handleAppHomeOpened(event: SlackEvent) {
 
 async function SlackValidClient(event:SlackEvent) {
     //Aqui vemos si existe el cliente, y retorno si true y su token, de lo contrario registro la empresa y retorno false mas su token.
-	const response=await validateLlaimaUser(event);
-	return {"payment":response.company.isActive, "token":response.company.integrations[0].payload.access_token}
+	try{
+		const response=await validateLlaimaUser(event);
+		return response
+	}
+	catch(error){
+		console.log("error en SlackValidacioncliente con backend llaima", error)
+		return {"payment":false, "token":""}
+	}
 }
-
 // Handler para mensajes directos
 async function handleSlackMessage(event:SlackEvent) {
+
+	//	console.log("event HM:", event)
    
     // Verifica si el mensaje fue enviado por un bot
     if ((event.subtype && event.subtype === 'bot_message') || event.bot_id) {
@@ -264,19 +272,34 @@ async function handleSlackMessage(event:SlackEvent) {
 			}
 		];
 		let message="usuario logueado y de pago!!:D"
-
-		console.log("SlackEvent:", event);
 		const response=await SlackValidClient(event);
-		console.log("respuesta:",response)
+		
 				//Aqui debemos validar 
 		try{
-			if(response.payment){
+			if(response.company.isActive){
+
 				//mensaje para los logueados
+
+				const getm=await getSendMessage(event)
+
+				if(getm.success){
+					console.log("getm:",getm.promt.answer)
+
+
+					const res=	await slackApi('chat.postMessage', {
+						channel: event.channel,
+						text: getm.promt.answer
+					},response?.company.integrations[0].payload.access_token);
+				}else{
+						//mensaje para los logueados
 				const res=	await slackApi('chat.postMessage', {
 					channel: event.channel,
 					text: message
-				},response?.token);
-				console.log(res)	
+				},response?.company.integrations[0].payload.access_token);
+
+				}
+				
+
 				
 			}else{
 				//mensajesBot[fakemessage].texto
@@ -320,7 +343,7 @@ export const handler: Handler = async (event) => {
 
 
 	//CASO PARA LAS PETICIONES QUE VIENE DE SLACK
-	console.log("request Handler", event.httpMethod, event.path)
+	
 
 	// Redireccionamiento para el flujo de OAuth de SLACK
 	if (event.path.includes('/api/slack/oauth/callback')) {
@@ -328,8 +351,8 @@ export const handler: Handler = async (event) => {
 		return handleSlackOauthCallback(event);
 	}
 	else{
+
 		const valid = verifySlackRequest(event);
-	
 
 	if (!valid) {
 		console.error('invalid request');
@@ -339,10 +362,10 @@ export const handler: Handler = async (event) => {
 			body: 'invalid request',
 		};
 	}
+
 	const contentType = event.headers['content-type'] || '';
     let body:any;
 
-	
 
     if (contentType.includes('application/x-www-form-urlencoded')) {
         // Manejo del caso donde event.body podría ser null

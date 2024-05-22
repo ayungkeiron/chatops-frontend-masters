@@ -1,5 +1,5 @@
 export async function llaimaApi(endpoint: string, body: {}) {
-	const res = await fetch(`http://api.llaima.tech:3001/api/v1${endpoint}`, {
+	const res = await fetch(`https://api.llaima.tech/api/v1${endpoint}`, {
 		method: 'POST',
 		headers: {
 			accept: 'application/json',
@@ -18,7 +18,21 @@ export async function llaimaApi(endpoint: string, body: {}) {
 }
 
 export async function validateLlaimaUser(request:SlackEvent) {
+	console.log("ANTES DE VALIDATE LLAIMAUSER:", request)
 	const response=await llaimaApi('/integration/slack/validate-user',request)
 	return response.data
+}
+
+export async function getSendMessage(request: any) {
+	try {
+		console.log("ANTES DE API SEND/MESSAGE", request)
+		const response = await llaimaApi('/integration/slack/send-message', request );
+		console.log("response sendMessage:", response);
+		return response.data;
+	} catch (error) {
+		console.error(error);
+		// Handle the error here
+		throw error; // Rethrow the error to be handled by the caller
+	}
 }
 
