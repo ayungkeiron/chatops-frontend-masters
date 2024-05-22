@@ -53,6 +53,7 @@ export async function handleAppHomeOpened(event: SlackEvent) {
 }
 
 export async function handleSlackMessage(event: SlackEvent) {
+
     if ((event.subtype && event.subtype === 'bot_message') || event.bot_id) {
         console.log("Mensaje ignorado porque fue enviado por un bot");
         return {
@@ -61,7 +62,8 @@ export async function handleSlackMessage(event: SlackEvent) {
         };
     }
 
-    if (event.type === 'message' && event.channel_type === 'im') {
+    else if (event.type === 'message' && event.channel_type === 'im') {
+
         const mensajesBot = [
             {
                 texto: "¡Hola, Domingo! Claro, estaré encantado de ayudarte pero necesito más información para poder asistirte. ¿Podrías darme algunos detalles como la fecha de inicio, el tipo de contrato, y si fue con un comprador o un vendedor?"
@@ -80,55 +82,78 @@ export async function handleSlackMessage(event: SlackEvent) {
         let message = "usuario logueado y de pago!!:D"
         const response = await validateLlaimaUser(event);
 
-        try {
-            await slackApi('chat.postMessage', {
-                channel: event.channel,
-                text: "Estamos buscando la información que solicitaste. Por favor, espera un momento..."
-            }, response?.company.integrations[0].payload.access_token);
+       // console.log('respuesta validate en mensaje in:',response)
 
-            if (response.company.isActive) {
-                const getm = await getSendMessage(event)
-                if (getm.success) {
-                    console.log("getm:", getm.data.prompt.answer)
+        //Cualquier persona que nos hable, deberia tener el payload de integracion, osino es un error extra;o no manejado.
+        if(response.company.integrations[0].payload.access_token != null){
+            try {
 
-                    const res = await slackApi('chat.postMessage', {
-                        channel: event.channel,
-                        text: getm.data.prompt.answer
-                    }, response?.company.integrations[0].payload.access_token);
-                } else {
-                    const res = await slackApi('chat.postMessage', {
-                        channel: event.channel,
-                        text: message
-                    }, response?.company.integrations[0].payload.access_token);
-                }
-            } else {
-                const res = await slackApi('chat.postMessage', {
+                await slackApi('chat.postMessage', {
                     channel: event.channel,
-                    text: mensajesBot[fakemessage].texto
-                }, response?.token);
-                fakemessage = fakemessage + 1;
-                if (fakemessage == 4) {
-                    fakemessage = 0;
+                    text: "Estamos buscando la información que solicitaste. Por favor, espera un momento..."
+                }, response?.company.integrations[0].payload.access_token);
+    
+                //COMPORTAMIENTO PARA LOS LOGUEADOS
+                if (response.company.isActive) {
+                    const getm = await getSendMessage(event)
+                    console.log("getm:", getm.error)
+
+                    if (getm.success) {
+                        console.log("getm:", getm.data.prompt.answer)
+    
+                        const res = await slackApi('chat.postMessage', {
+                            channel: event.channel,
+                            text: getm.data.prompt.answer
+                        }, response?.company.integrations[0].payload.access_token);
+                    } else {
+                        const res = await slackApi('chat.postMessage', {
+                            channel: event.channel,
+                            text: "Estamos temporalmente con problemas, intenta más tarde. Este incidente ya fue automáticamente reportado a nuestro equipo de soporte."
+                        }, response?.company.integrations[0].payload.access_token);
+                    }
+                } 
+                //COMPORTAMIENTO PARA LOS NO LOGUEADOS
+                else {
+    
+                    const res = await slackApi('chat.postMessage', {
+                        channel: event.channel,
+                        text: mensajesBot[fakemessage].texto
+                    }, response?.token);
+                    fakemessage = fakemessage + 1;
+                    if (fakemessage == 4) {
+                        fakemessage = 0;
+                    }
+                    console.log(res);
                 }
-                console.log(res);
+    
+                return {
+                    statusCode: 200,
+                    body: 'Mensaje enviado'
+                };
+    
+            } 
+            catch (error) {
+                console.log("error en slackPostMessage", error)
+    
+                return {
+                    statusCode: 500,
+                    body: 'No se valida usuario en backend de llaima'
+                };
             }
-            return {
-                statusCode: 200,
-                body: 'Mensaje enviado'
-            };
 
-        } catch (error) {
-            console.log("error en SlackValidacioncliente con backend llaima", error)
-
+        }else{
+            //Si no tiene integracion, no se puede hacer nada esto jamas deberia pasar.
             return {
                 statusCode: 500,
-                body: 'No se valida usuario en backend de llaima'
+                body: 'Sin info de integracion de usuario'
             };
         }
     }
+    else{
+        return {
+            statusCode: 200,
+            body: 'Tipo de evento no manejado en handleSlack'
+        };
+    }
 
-    return {
-        statusCode: 200,
-        body: 'Tipo de evento no manejado en handleSlack'
-    };
 }
