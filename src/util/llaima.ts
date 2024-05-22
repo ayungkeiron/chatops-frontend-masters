@@ -28,7 +28,7 @@ export async function getSendMessage(request: any) {
 		console.log("ANTES DE API SEND/MESSAGE", request)
 		const response = await llaimaApi('/integration/slack/send-message', request );
 		console.log("response sendMessage:", response);
-		return response.data;
+		return response;
 	} catch (error) {
 		console.error(error);
 		// Handle the error here

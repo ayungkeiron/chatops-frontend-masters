@@ -283,12 +283,11 @@ async function handleSlackMessage(event:SlackEvent) {
 				const getm=await getSendMessage(event)
 
 				if(getm.success){
-					console.log("getm:",getm.promt.answer)
-
+					console.log("getm:",getm.data.prompt.answer)
 
 					const res=	await slackApi('chat.postMessage', {
 						channel: event.channel,
-						text: getm.promt.answer
+						text: getm.data.prompt.answer
 					},response?.company.integrations[0].payload.access_token);
 				}else{
 						//mensaje para los logueados

@@ -5,3 +5,5 @@
 
 [functions]
   directory = "src"
+  node_bundler = "esbuild"
+  timeout = { duration = 15 }
